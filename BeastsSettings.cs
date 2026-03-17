@@ -137,6 +137,10 @@ public class BeastsSettings : ISettings
     // NEW: Export button — press this while Bestiary panel is open
     public ButtonNode ExportBeastsNow { get; set; } = new ButtonNode();
 
+    // NEW: Debug button — scans UI tree to find correct bestiary panel indices
+    // Open Bestiary in-game, press this, check Debug Window for output
+    public ButtonNode ScanUiTree { get; set; } = new ButtonNode();
+
     [JsonIgnore] public CustomNode LastUpdated { get; set; }
 
     [JsonIgnore] public CustomNode BeastPicker { get; set; }
