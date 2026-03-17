@@ -20,6 +20,7 @@ public partial class Beasts : BaseSettingsPlugin<BeastsSettings>
 
     public override void OnLoad()
     {
+        Extensions.PluginDirectory = DirectoryFullName;
         Settings.FetchBeastPrices.OnPressed += async () => await FetchPrices();
         Settings.ExportBeastsNow.OnPressed += () => ExportCapturedBeasts();
         Settings.ScanUiTree.OnPressed += () => ScanUiTree();
