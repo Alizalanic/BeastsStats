@@ -22,7 +22,18 @@ public partial class Beasts : BaseSettingsPlugin<BeastsSettings>
     {
         Settings.FetchBeastPrices.OnPressed += async () => await FetchPrices();
         Settings.ExportBeastsNow.OnPressed += () => ExportCapturedBeasts();
+        Settings.ScanUiTree.OnPressed += () => ScanUiTree();
         Task.Run(FetchPrices);
+    }
+
+    /// <summary>
+    /// Debug: Scans the UI tree to find the correct child indices for the Bestiary panel.
+    /// Open the Bestiary in-game FIRST, then press this button, then check the Debug Window log.
+    /// </summary>
+    private void ScanUiTree()
+    {
+        DebugWindow.LogMsg("[Beasts] Starting UI tree scan... Make sure Bestiary panel is OPEN!");
+        Extensions.FindBestiaryPanel(GameController.IngameState.IngameUi);
     }
 
     private async Task FetchPrices()
