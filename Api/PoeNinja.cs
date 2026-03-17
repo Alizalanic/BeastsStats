@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -8,7 +8,9 @@ namespace Beasts.Api;
 
 public static class PoeNinja
 {
-    private static readonly string PoeNinjaUrl = "https://poe.ninja/api/data/itemoverview?league=Keepers&type=Beast";
+    // Updated for 3.28 Mirage league
+    // If league name changes, update this string
+    private static readonly string PoeNinjaUrl = "https://poe.ninja/api/data/itemoverview?league=Mirage&type=Beast";
 
     private class PoeNinjaLine
     {
