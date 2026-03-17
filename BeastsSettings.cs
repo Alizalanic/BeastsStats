@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Beasts.Data;
@@ -133,6 +133,9 @@ public class BeastsSettings : ISettings
     public ToggleNode ShowBestiaryPanel { get; set; } = new ToggleNode(true);
 
     public ButtonNode FetchBeastPrices { get; set; } = new ButtonNode();
+
+    // NEW: Export button — press this while Bestiary panel is open
+    public ButtonNode ExportBeastsNow { get; set; } = new ButtonNode();
 
     [JsonIgnore] public CustomNode LastUpdated { get; set; }
 
