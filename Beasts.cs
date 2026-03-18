@@ -110,6 +110,8 @@ public partial class Beasts : BaseSettingsPlugin<BeastsSettings>
                         beastCounts[name] = 1;
 
                     // Try to match to known beast for craft info
+                    // If found in BeastsDatabase → Red beast (has crafts)
+                    // If not found → Yellow beast (filler component)
                     var knownBeast = BeastsDatabase.AllBeasts.FirstOrDefault(b => b.DisplayName == name);
                     var price = Settings.BeastPrices.TryGetValue(name, out var p) ? p : -1;
 
@@ -118,6 +120,7 @@ public partial class Beasts : BaseSettingsPlugin<BeastsSettings>
                         DisplayName = name,
                         Family = entry.Family,
                         Region = entry.Region,
+                        BeastColor = knownBeast != null ? "Red" : "Yellow",
                         Crafts = knownBeast?.Crafts ?? Array.Empty<string>(),
                         Price = price
                     });
@@ -139,6 +142,8 @@ public partial class Beasts : BaseSettingsPlugin<BeastsSettings>
                 Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
                 TotalBeasts = beastDetails.Count,
                 UniqueBeastTypes = beastCounts.Count,
+                RedBeasts = beastDetails.Count(b => b.BeastColor == "Red"),
+                YellowBeasts = beastDetails.Count(b => b.BeastColor == "Yellow"),
                 RegionCounts = regionCounts.OrderByDescending(x => x.Value)
                     .ToDictionary(x => x.Key, x => x.Value),
                 FamilyCounts = familyCounts.OrderByDescending(x => x.Value)
@@ -168,13 +173,14 @@ public partial class Beasts : BaseSettingsPlugin<BeastsSettings>
             {
                 if (!csvExists)
                 {
-                    writer.WriteLine("timestamp,beast_name,family,region,count,price,crafts");
+                    writer.WriteLine("timestamp,beast_name,beast_color,family,region,count,price,crafts");
                 }
 
                 foreach (var kvp in beastCounts)
                 {
                     var price = Settings.BeastPrices.TryGetValue(kvp.Key, out var pr) ? pr : -1;
                     var knownBeast = BeastsDatabase.AllBeasts.FirstOrDefault(b => b.DisplayName == kvp.Key);
+                    var beastColor = knownBeast != null ? "Red" : "Yellow";
                     var crafts = knownBeast != null ? string.Join(" | ", knownBeast.Crafts) : "";
                     // Get family/region from the first matching beast in details
                     var detail = beastDetails.FirstOrDefault(b => b.DisplayName == kvp.Key);
@@ -183,13 +189,13 @@ public partial class Beasts : BaseSettingsPlugin<BeastsSettings>
                     // Escape CSV fields
                     var safeName = kvp.Key.Replace("\"", "\"\"");
                     var safeCrafts = crafts.Replace("\"", "\"\"");
-                    writer.WriteLine($"{export.Timestamp},\"{safeName}\",\"{family}\",\"{region}\",{kvp.Value},{price},\"{safeCrafts}\"");
+                    writer.WriteLine($"{export.Timestamp},\"{safeName}\",{beastColor},\"{family}\",\"{region}\",{kvp.Value},{price},\"{safeCrafts}\"");
                 }
             }
 
             _lastExportTime = DateTime.Now;
             DebugWindow.LogMsg(
-                $"[Beasts] Exported {beastDetails.Count} beasts ({beastCounts.Count} types) to {snapshotPath}", 5);
+                $"[Beasts] Exported {beastDetails.Count} beasts ({beastCounts.Count} types, {export.RedBeasts} red / {export.YellowBeasts} yellow) to {snapshotPath}", 5);
         }
         catch (Exception e)
         {
@@ -203,6 +209,7 @@ public partial class Beasts : BaseSettingsPlugin<BeastsSettings>
         public string DisplayName;
         public string Family;
         public string Region;
+        public string BeastColor; // "Red" = has crafts (in BeastsDatabase), "Yellow" = filler component
         public string[] Crafts;
         public float Price;
     }
@@ -212,6 +219,8 @@ public partial class Beasts : BaseSettingsPlugin<BeastsSettings>
         public string Timestamp;
         public int TotalBeasts;
         public int UniqueBeastTypes;
+        public int RedBeasts;
+        public int YellowBeasts;
         public Dictionary<string, int> RegionCounts;
         public Dictionary<string, int> FamilyCounts;
         public Dictionary<string, int> BeastCounts;
