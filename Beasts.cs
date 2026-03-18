@@ -41,9 +41,20 @@ public partial class Beasts : BaseSettingsPlugin<BeastsSettings>
     {
         DebugWindow.LogMsg("Fetching Beast Prices from PoeNinja...");
         var prices = await PoeNinja.GetBeastsPrices();
+        
+        // Store ALL prices from poe.ninja (covers beasts not in BeastsDatabase too)
+        foreach (var kvp in prices)
+        {
+            Settings.BeastPrices[kvp.Key] = kvp.Value;
+        }
+        
+        // Mark database beasts not found on poe.ninja as -1
         foreach (var beast in BeastsDatabase.AllBeasts)
         {
-            Settings.BeastPrices[beast.DisplayName] = prices.TryGetValue(beast.DisplayName, out var price) ? price : -1;
+            if (!Settings.BeastPrices.ContainsKey(beast.DisplayName))
+            {
+                Settings.BeastPrices[beast.DisplayName] = -1;
+            }
         }
 
         Settings.LastUpdate = DateTime.Now;
@@ -75,8 +86,8 @@ public partial class Beasts : BaseSettingsPlugin<BeastsSettings>
                 return;
             }
 
-            var beasts = capturedBeastsPanel.CapturedBeasts;
-            if (beasts == null || beasts.Count == 0)
+            var beastsWithFamily = capturedBeastsPanel.CapturedBeastsWithFamily;
+            if (beastsWithFamily == null || beastsWithFamily.Count == 0)
             {
                 DebugWindow.LogMsg("[Beasts] No captured beasts found.", 5);
                 return;
@@ -86,11 +97,11 @@ public partial class Beasts : BaseSettingsPlugin<BeastsSettings>
             var beastCounts = new Dictionary<string, int>();
             var beastDetails = new List<ExportedBeast>();
 
-            foreach (var beast in beasts)
+            foreach (var entry in beastsWithFamily)
             {
                 try
                 {
-                    var name = beast.DisplayName;
+                    var name = entry.Beast.DisplayName;
                     if (string.IsNullOrEmpty(name)) continue;
 
                     if (beastCounts.ContainsKey(name))
@@ -105,6 +116,8 @@ public partial class Beasts : BaseSettingsPlugin<BeastsSettings>
                     beastDetails.Add(new ExportedBeast
                     {
                         DisplayName = name,
+                        Family = entry.Family,
+                        Region = entry.Region,
                         Crafts = knownBeast?.Crafts ?? Array.Empty<string>(),
                         Price = price
                     });
@@ -116,11 +129,20 @@ public partial class Beasts : BaseSettingsPlugin<BeastsSettings>
             }
 
             // Build export object
+            var familyCounts = beastDetails.GroupBy(b => b.Family)
+                .ToDictionary(g => g.Key, g => g.Count());
+            var regionCounts = beastDetails.GroupBy(b => b.Region)
+                .ToDictionary(g => g.Key, g => g.Count());
+
             var export = new BeastExport
             {
                 Timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
                 TotalBeasts = beastDetails.Count,
                 UniqueBeastTypes = beastCounts.Count,
+                RegionCounts = regionCounts.OrderByDescending(x => x.Value)
+                    .ToDictionary(x => x.Key, x => x.Value),
+                FamilyCounts = familyCounts.OrderByDescending(x => x.Value)
+                    .ToDictionary(x => x.Key, x => x.Value),
                 BeastCounts = beastCounts.OrderByDescending(x => x.Value)
                     .ToDictionary(x => x.Key, x => x.Value),
                 AllBeasts = beastDetails
@@ -146,7 +168,7 @@ public partial class Beasts : BaseSettingsPlugin<BeastsSettings>
             {
                 if (!csvExists)
                 {
-                    writer.WriteLine("timestamp,beast_name,count,price,crafts");
+                    writer.WriteLine("timestamp,beast_name,family,region,count,price,crafts");
                 }
 
                 foreach (var kvp in beastCounts)
@@ -154,10 +176,14 @@ public partial class Beasts : BaseSettingsPlugin<BeastsSettings>
                     var price = Settings.BeastPrices.TryGetValue(kvp.Key, out var pr) ? pr : -1;
                     var knownBeast = BeastsDatabase.AllBeasts.FirstOrDefault(b => b.DisplayName == kvp.Key);
                     var crafts = knownBeast != null ? string.Join(" | ", knownBeast.Crafts) : "";
+                    // Get family/region from the first matching beast in details
+                    var detail = beastDetails.FirstOrDefault(b => b.DisplayName == kvp.Key);
+                    var family = detail?.Family ?? "";
+                    var region = detail?.Region ?? "";
                     // Escape CSV fields
                     var safeName = kvp.Key.Replace("\"", "\"\"");
                     var safeCrafts = crafts.Replace("\"", "\"\"");
-                    writer.WriteLine($"{export.Timestamp},\"{safeName}\",{kvp.Value},{price},\"{safeCrafts}\"");
+                    writer.WriteLine($"{export.Timestamp},\"{safeName}\",\"{family}\",\"{region}\",{kvp.Value},{price},\"{safeCrafts}\"");
                 }
             }
 
@@ -175,6 +201,8 @@ public partial class Beasts : BaseSettingsPlugin<BeastsSettings>
     private class ExportedBeast
     {
         public string DisplayName;
+        public string Family;
+        public string Region;
         public string[] Crafts;
         public float Price;
     }
@@ -184,6 +212,8 @@ public partial class Beasts : BaseSettingsPlugin<BeastsSettings>
         public string Timestamp;
         public int TotalBeasts;
         public int UniqueBeastTypes;
+        public Dictionary<string, int> RegionCounts;
+        public Dictionary<string, int> FamilyCounts;
         public Dictionary<string, int> BeastCounts;
         public List<ExportedBeast> AllBeasts;
     }
